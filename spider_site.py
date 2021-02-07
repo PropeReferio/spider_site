@@ -42,8 +42,6 @@ def get_internal_links(soup, domain, unvisited_queue, visited):
             if is_internal(cur_link, domain):
                 if cur_link not in visited and cur_link not in unvisited_queue:
                     unvisited_queue.append(cur_link)
-                    # visited.add(cur_link)
-                    print('Added link:', cur_link, len(unvisited_queue))
                 else:
                     visited.add(cur_link)
 
@@ -66,20 +64,31 @@ def is_internal(url, domain):
     :return: Boolean
     """
     parsed = urlparse(url)
-    return all([parsed.netloc.endswith(domain), not parsed.query.startswith('share')])
+    return parsed.netloc.endswith(domain)
 
 def Main():
     """
     Checks all the links on a website, visiting each link at the same domain,
     adding unvisited links to a queue, and adding visited links to a set called
     visited. Use the visited set to avoid visiting those links again.
-    :return:
     """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-f',
+                        '--file',
+                        help="File name to write output to.",
+                        type=str)
+    parser.add_argument('-u',
+                        '--url',
+                        help="URL starting point for finding all pages on the site.",
+                        type=str,
+                        required=True)
+    args = parser.parse_args()
+
     unvisited_queue = deque()
     # Searching through a set is much faster than through a list
     visited = set()
 
-    url = ''
+    url = args.url
     domain = get_domain_name(url)
     unvisited_queue.append(url)
 
@@ -91,11 +100,14 @@ def Main():
         if soup is not None:
             get_internal_links(soup, domain, unvisited_queue, visited)
 
+    # Doesn't work when starts with subdomain or www.
+    # TODO Determine if we should be dropping params and queries
     output = '\n'.join(sorted(list(visited)))
     print(f"\nHere's a list of all the links from this site: \n\n{output}")
 
-    with open('pages.txt', 'w') as file:
-        file.write(output)
+    if args.file:
+        with open(args.file, 'w') as file:
+            file.write(output)
 
 if __name__ == "__main__":
     Main()
