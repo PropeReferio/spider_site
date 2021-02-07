@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 from collections import deque
 from urllib.parse import urlparse
@@ -71,8 +73,10 @@ def Main():
     Checks all the links on a website, visiting each link at the same domain,
     adding unvisited links to a queue, and adding visited links to a set called
     visited. Use the visited set to avoid visiting those links again.
+    Wordlists come from https://github.com/danielmiessler/SecLists.
     """
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="A script that tries to spider an entire website\
+                                                 from a starting page provided by the user.")
     parser.add_argument('-f',
                         '--file',
                         help="File name to write output to.",
@@ -103,7 +107,7 @@ def Main():
     # Doesn't work when starts with subdomain or www.
     # TODO Determine if we should be dropping params and queries
     output = '\n'.join(sorted(list(visited)))
-    print(f"\nHere's a list of all the links from this site: \n\n{output}")
+    print(f"\nHere's a list of links found on the site: \n\n{output}")
 
     if args.file:
         with open(args.file, 'w') as file:
