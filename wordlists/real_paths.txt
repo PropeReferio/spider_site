@@ -1,4 +1,7 @@
 bga
 tech
 categories
-contact
+Contact
+html
+css
+javascript
