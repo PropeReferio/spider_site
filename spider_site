@@ -3,18 +3,12 @@
 import argparse
 from collections import deque
 from urllib.parse import urlparse
+import time
+import timeit
 
 import requests
 from bs4 import BeautifulSoup
-
-def get_domain_name(url):
-    """
-    Returns the domain name of the URL being checked. Currently, this function needs
-    a URL with the protocol, and without a subdomain.
-    :param url: (str) URL whose domain we want to find.
-    :return:
-    """
-    return urlparse(url).netloc
+from tld import get_fld
 
 def get_page(url, visited):
     """
@@ -25,7 +19,6 @@ def get_page(url, visited):
     r = requests.get(url)
     if r.status_code != requests.codes.ok:
         print(f'There was a problem getting the page {url}')
-        # visited.append(url)
     else:
         soup = BeautifulSoup(r.content, "html.parser")
         return soup
@@ -52,6 +45,7 @@ def get_internal_links(soup, domain, unvisited_queue, visited):
                     unvisited_queue.append(cur_link)
                 else:
                     visited.add(cur_link)
+                    # This else block may be redundant. Consider removing it.
 
 def drop_params_queries_fragments(url):
     """
@@ -81,6 +75,7 @@ def Main():
     visited. Use the visited set to avoid visiting those links again.
     Wordlists come from https://github.com/danielmiessler/SecLists.
     """
+    start = time.time()
     parser = argparse.ArgumentParser(description="A script that tries to spider an entire website\
                                                  from a starting page provided by the user.")
     parser.add_argument('-f',
@@ -98,22 +93,22 @@ def Main():
     # Searching through a set is much faster than through a list
     visited = set()
 
-    url = args.url
-    domain = get_domain_name(url)
+    parsed = urlparse(args.url)
+    url = f"http://{parsed.netloc}{parsed.path}"
+    domain = get_fld(url, fix_protocol=True)
+    # line above turns 'www.google.co.uk' into 'google.co.uk'
     unvisited_queue.append(url)
 
     while len(unvisited_queue) > 0:
         cur_url = unvisited_queue.popleft()
-        # Need a regex to extract domain name
         soup = get_page(cur_url, visited)
         visited.add(cur_url)
         if soup is not None:
             get_internal_links(soup, domain, unvisited_queue, visited)
 
-    # Doesn't work when starts with subdomain or www.
     # TODO Determine if we should be dropping params and queries
     output = '\n'.join(sorted(list(visited)))
-    print(f"\nHere's a list of links found on the site: \n\n{output}")
+    print(f"\nHere's a list of links found on the site: \n\n{output}\n{time.time() - start} seconds elapsed")
 
     if args.file:
         with open(args.file, 'w') as file:
