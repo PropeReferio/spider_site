@@ -16,9 +16,12 @@ def get_page(url, visited):
     :return: (soup or str, not sure yet) The HTML of the page
     """
     # Currently, this won't work with dynamically loaded websites.
-    r = requests.get(url)
-    if r.status_code != requests.codes.ok:
-        print(f'There was a problem getting the page {url}')
+    try:
+        r = requests.get(url)
+        if r.status_code != requests.codes.ok:
+            print(f'There was a problem getting the page {url}')
+    except Exception as e:
+        print(Exception)
     else:
         soup = BeautifulSoup(r.content, "html.parser")
         return soup
@@ -27,9 +30,12 @@ def get_internal_links(soup, domain, unvisited_queue, visited):
     """
     Gets the internal links from the page. Filters out fragments. Checks
     for the use of the <base> tag, and makes adjustments as necessary.
+    It also adds links with certain extensions directly to the visited list
+    without attempting to parse them.
     :param html: The html of the page being parsed for internal links.
     :param domain: (str) The domain name of the site.
     """
+    extensions = ['.jpg', '.jpeg', '.png', '.pdf']
     base_url = ''
     if soup.base:
         base_url = soup.base['href']
@@ -41,7 +47,8 @@ def get_internal_links(soup, domain, unvisited_queue, visited):
             cur_link = base_url + all_links[i]['href']
             cur_link = drop_params_queries_fragments(cur_link)
             if is_internal(cur_link, domain):
-                if cur_link not in visited and cur_link not in unvisited_queue:
+                if cur_link not in visited and cur_link not in unvisited_queue and not any([cur_link.endswith(ext) for ext in extensions]):
+                    # TODO: Skip over links with extensions like .pdf, .jpg, .png, etc. Put them in visited, not unvisited.
                     unvisited_queue.append(cur_link)
                 else:
                     visited.add(cur_link)
@@ -87,15 +94,24 @@ def Main():
                         help="URL starting point for finding all pages on the site.",
                         type=str,
                         required=True)
+    parser.add_argument('-s',
+                        '--subdomains',
+                        help="Use this flag if you want to also spider to subdomains.",
+                        action='store_true',
+                        default=False)
     args = parser.parse_args()
 
     unvisited_queue = deque()
     # Searching through a set is much faster than through a list
     visited = set()
 
+    # This should be its own function
     parsed = urlparse(args.url)
     url = f"http://{parsed.netloc}{parsed.path}"
-    domain = get_fld(url, fix_protocol=True)
+    if args.subdomains:
+        domain = get_fld(url, fix_protocol=True)
+    else:
+        domain = f"{parsed.netloc}"
     # line above turns 'www.google.co.uk' into 'google.co.uk'
     unvisited_queue.append(url)
 
@@ -107,8 +123,9 @@ def Main():
             get_internal_links(soup, domain, unvisited_queue, visited)
 
     # TODO Determine if we should be dropping params and queries
+    # TODO I need an option to also spider subdomains, default false.
     output = '\n'.join(sorted(list(visited)))
-    print(f"\nHere's a list of links found on the site: \n\n{output}\n{time.time() - start} seconds elapsed")
+    print(f"\nHere's a list of links found on the site: \n\n{output}\n{round(time.time() - start, 2)} seconds elapsed")
 
     if args.file:
         with open(args.file, 'w') as file:
