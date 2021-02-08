@@ -42,6 +42,8 @@ def get_internal_links(soup, domain, unvisited_queue, visited):
         if not base_url.endswith('/'):
             base_url += '/'
     all_links = soup.find_all('a')
+    # TODO Add links to visited_raw_links, check if link in visited_raw_links before drop_params, is_internal, etc
+    visited_raw_links = set()
     for i in range(len(all_links)):
         if all_links[i].has_attr('href'):
             cur_link = base_url + all_links[i]['href']
