@@ -21,7 +21,7 @@ def get_page(url, visited):
         if r.status_code != requests.codes.ok:
             print(f'There was a problem getting the page {url}')
     except Exception as e:
-        print(Exception)
+        print(e)
     else:
         soup = BeautifulSoup(r.content, "html.parser")
         return soup
